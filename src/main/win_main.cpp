@@ -1,5 +1,7 @@
 #include <windows.h>
 
+// reference for window: https://learn.microsoft.com/en-us/windows/win32/winmsg/windows
+// reference for this callback: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nc-winuser-wndproc
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg)
