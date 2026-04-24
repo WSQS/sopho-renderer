@@ -10,6 +10,7 @@ struct GxxContext
     static constexpr sopho::StaticString obj_postfix{".o"};
     static constexpr sopho::StaticString bin_prefix{" -o "};
     static constexpr sopho::StaticString build_prefix{"build/"};
+    static constexpr std::array<std::string_view, 1> ldflags{"-lX11"};
 };
 
 struct ClContext
@@ -25,7 +26,12 @@ struct ClContext
 
 struct MainSource
 {
+#if defined(_MSC_VER)
     static constexpr sopho::StaticString source{"src/main/win_main.cpp"};
+#elif defined(__GNUC__)
+    static constexpr sopho::StaticString source{"src/main/linux_main.cpp"};
+#else
+#endif
 };
 struct Main
 {
