@@ -71,10 +71,16 @@ namespace sopho
             pixel[m_alpha_offset] = a;
         }
 
-        enum class Filter { Nearest, Bilinear };
+        enum class Filter
+        {
+            Nearest,
+            Bilinear
+        };
 
         // Copies this buffer's pixels to dst, resampling if sizes differ and converting
         // format if channel layouts differ.
+        // filter: selects sampling algorithm — Filter::Nearest (fast, pixelated) or
+        //          Filter::Bilinear (smooth, slower). Defaults to Bilinear.
         void copy_pixel_buffer(PixelBuffer* dst, Filter filter) const
         {
             if (dst->m_width == 0 || dst->m_height == 0)
@@ -92,10 +98,14 @@ namespace sopho
                         for (std::uint64_t dx = 0; dx < dst->m_width; ++dx)
                         {
                             std::uint64_t sx = dx * m_width / dst->m_width;
-                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_red_offset] = m_pixels[(sy * m_width + sx) * m_bytes_per_pixel + m_red_offset];
-                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_green_offset] = m_pixels[(sy * m_width + sx) * m_bytes_per_pixel + m_green_offset];
-                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_blue_offset] = m_pixels[(sy * m_width + sx) * m_bytes_per_pixel + m_blue_offset];
-                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_alpha_offset] = m_pixels[(sy * m_width + sx) * m_bytes_per_pixel + m_alpha_offset];
+                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_red_offset] =
+                                m_pixels[(sy * m_width + sx) * m_bytes_per_pixel + m_red_offset];
+                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_green_offset] =
+                                m_pixels[(sy * m_width + sx) * m_bytes_per_pixel + m_green_offset];
+                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_blue_offset] =
+                                m_pixels[(sy * m_width + sx) * m_bytes_per_pixel + m_blue_offset];
+                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_alpha_offset] =
+                                m_pixels[(sy * m_width + sx) * m_bytes_per_pixel + m_alpha_offset];
                         }
                     }
                 }
@@ -117,7 +127,8 @@ namespace sopho
                             src_x = (src_x < 0.0f) ? 0.0f : src_x;
                             src_y = (src_y < 0.0f) ? 0.0f : src_y;
                             src_x = (src_x > static_cast<float>(m_width)) ? static_cast<float>(m_width) - 1.0f : src_x;
-                            src_y = (src_y > static_cast<float>(m_height)) ? static_cast<float>(m_height) - 1.0f : src_y;
+                            src_y =
+                                (src_y > static_cast<float>(m_height)) ? static_cast<float>(m_height) - 1.0f : src_y;
 
                             std::uint64_t x0 = static_cast<std::uint64_t>(src_x);
                             std::uint64_t y0 = static_cast<std::uint64_t>(src_y);
@@ -136,19 +147,23 @@ namespace sopho
                                 p11[c] = m_pixels[(y1 * m_width + x1) * m_bytes_per_pixel + c];
                             }
 
-                            float r = (1.0f - fy) * ((1.0f - fx) * p00[m_red_offset] + fx * p10[m_red_offset])
-                                    + fy * ((1.0f - fx) * p01[m_red_offset] + fx * p11[m_red_offset]);
-                            float g = (1.0f - fy) * ((1.0f - fx) * p00[m_green_offset] + fx * p10[m_green_offset])
-                                    + fy * ((1.0f - fx) * p01[m_green_offset] + fx * p11[m_green_offset]);
-                            float b = (1.0f - fy) * ((1.0f - fx) * p00[m_blue_offset] + fx * p10[m_blue_offset])
-                                    + fy * ((1.0f - fx) * p01[m_blue_offset] + fx * p11[m_blue_offset]);
-                            float a = (1.0f - fy) * ((1.0f - fx) * p00[m_alpha_offset] + fx * p10[m_alpha_offset])
-                                    + fy * ((1.0f - fx) * p01[m_alpha_offset] + fx * p11[m_alpha_offset]);
+                            float r = (1.0f - fy) * ((1.0f - fx) * p00[m_red_offset] + fx * p10[m_red_offset]) +
+                                fy * ((1.0f - fx) * p01[m_red_offset] + fx * p11[m_red_offset]);
+                            float g = (1.0f - fy) * ((1.0f - fx) * p00[m_green_offset] + fx * p10[m_green_offset]) +
+                                fy * ((1.0f - fx) * p01[m_green_offset] + fx * p11[m_green_offset]);
+                            float b = (1.0f - fy) * ((1.0f - fx) * p00[m_blue_offset] + fx * p10[m_blue_offset]) +
+                                fy * ((1.0f - fx) * p01[m_blue_offset] + fx * p11[m_blue_offset]);
+                            float a = (1.0f - fy) * ((1.0f - fx) * p00[m_alpha_offset] + fx * p10[m_alpha_offset]) +
+                                fy * ((1.0f - fx) * p01[m_alpha_offset] + fx * p11[m_alpha_offset]);
 
-                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_red_offset] = static_cast<std::uint8_t>(r);
-                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_green_offset] = static_cast<std::uint8_t>(g);
-                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_blue_offset] = static_cast<std::uint8_t>(b);
-                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_alpha_offset] = static_cast<std::uint8_t>(a);
+                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_red_offset] =
+                                static_cast<std::uint8_t>(r);
+                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_green_offset] =
+                                static_cast<std::uint8_t>(g);
+                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_blue_offset] =
+                                static_cast<std::uint8_t>(b);
+                            dst->m_pixels[(dy * dst->m_width + dx) * dst->m_bytes_per_pixel + dst->m_alpha_offset] =
+                                static_cast<std::uint8_t>(a);
                         }
                     }
                 }
@@ -158,10 +173,14 @@ namespace sopho
                 std::uint64_t count = m_width * m_height;
                 for (std::uint64_t i = 0; i < count; ++i)
                 {
-                    dst->m_pixels[i * dst->m_bytes_per_pixel + dst->m_red_offset] = m_pixels[i * m_bytes_per_pixel + m_red_offset];
-                    dst->m_pixels[i * dst->m_bytes_per_pixel + dst->m_green_offset] = m_pixels[i * m_bytes_per_pixel + m_green_offset];
-                    dst->m_pixels[i * dst->m_bytes_per_pixel + dst->m_blue_offset] = m_pixels[i * m_bytes_per_pixel + m_blue_offset];
-                    dst->m_pixels[i * dst->m_bytes_per_pixel + dst->m_alpha_offset] = m_pixels[i * m_bytes_per_pixel + m_alpha_offset];
+                    dst->m_pixels[i * dst->m_bytes_per_pixel + dst->m_red_offset] =
+                        m_pixels[i * m_bytes_per_pixel + m_red_offset];
+                    dst->m_pixels[i * dst->m_bytes_per_pixel + dst->m_green_offset] =
+                        m_pixels[i * m_bytes_per_pixel + m_green_offset];
+                    dst->m_pixels[i * dst->m_bytes_per_pixel + dst->m_blue_offset] =
+                        m_pixels[i * m_bytes_per_pixel + m_blue_offset];
+                    dst->m_pixels[i * dst->m_bytes_per_pixel + dst->m_alpha_offset] =
+                        m_pixels[i * m_bytes_per_pixel + m_alpha_offset];
                 }
             }
         }
