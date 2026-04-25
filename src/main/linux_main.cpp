@@ -2,15 +2,16 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <sys/select.h>
 #include <unistd.h>
-#include <vector>
 
 #include "pixel_buffer/pixel_buffer.h"
+#include "renderer/renderer2d.h"
 
 // Global state
 static Display* g_display = nullptr;
@@ -22,6 +23,8 @@ static int g_win_width = 800;
 static int g_win_height = 600;
 static int g_scaled_w = 0;
 static int g_scaled_h = 0;
+static float g_angle = 0.0f; // rotation angle in radians
+static sopho::Renderer2D* g_renderer = nullptr;
 
 // PixelBuffers: source (800x600) and scaled output
 // g_pixels: format "ARGB" (A=byte0, R=byte1, G=byte2, B=byte3)
@@ -42,6 +45,7 @@ static int handle_x_error(Display* dpy, XErrorEvent* ev)
 void InitPixelData(int width, int height)
 {
     g_pixels = new sopho::PixelBuffer(static_cast<uint64_t>(width), static_cast<uint64_t>(height), "ARGB", 4);
+    g_renderer = new sopho::Renderer2D(g_pixels);
 
     for (uint64_t i = 0; i < g_pixels->get_height(); ++i)
     {
@@ -51,6 +55,31 @@ void InitPixelData(int width, int height)
             g_pixels->set_color(j, i, r, 0, 0, 255); // ARGB: A=255, R=r, G=0, B=0
         }
     }
+}
+
+// Renders one frame: clears to black and draws a rotating white line through the center
+void RenderFrame()
+{
+    if (!g_pixels || !g_renderer)
+        return;
+
+    g_renderer->clear(0, 0, 0, 255); // black background
+
+    // Line endpoints relative to center, rotated by g_angle
+    float cx = static_cast<float>(g_pixels->get_width()) * 0.5f;
+    float cy = static_cast<float>(g_pixels->get_height()) * 0.5f;
+    float len = static_cast<float>(g_pixels->get_height()) * 0.4f; // line length ~40% of height
+
+    float cos_a = cosf(g_angle);
+    float sin_a = sinf(g_angle);
+
+    float x0 = cx - len * cos_a;
+    float y0 = cy - len * sin_a;
+    float x1 = cx + len * cos_a;
+    float y1 = cy + len * sin_a;
+
+    g_renderer->draw_line(static_cast<std::int64_t>(x0), static_cast<std::int64_t>(y0), static_cast<std::int64_t>(x1),
+                          static_cast<std::int64_t>(y1), 255, 255, 255, 255); // white line
 }
 
 // Blit: CPU-scale 800x600 source to window size, upload, copy
@@ -63,10 +92,15 @@ void StretchBlit(int win_width, int win_height)
     if (g_scaled_w != win_width || g_scaled_h != win_height)
     {
         delete g_scaled;
-        g_scaled = new sopho::PixelBuffer(static_cast<uint64_t>(win_width), static_cast<uint64_t>(win_height), "BGRA", 4);
+        g_scaled =
+            new sopho::PixelBuffer(static_cast<uint64_t>(win_width), static_cast<uint64_t>(win_height), "BGRA", 4);
         g_pixels->copy_pixel_buffer(g_scaled, sopho::PixelBuffer::Filter::Nearest);
         g_scaled_w = win_width;
         g_scaled_h = win_height;
+    }
+    else
+    {
+        g_pixels->copy_pixel_buffer(g_scaled, sopho::PixelBuffer::Filter::Nearest);
     }
 
     int screen = DefaultScreen(g_display);
@@ -198,6 +232,7 @@ int main()
                     XDestroyImage(g_image);
                 if (g_pixmap)
                     XFreePixmap(g_display, g_pixmap);
+                delete g_renderer;
                 delete g_scaled;
                 delete g_pixels;
                 XFreeGC(g_display, g_gc);
@@ -206,9 +241,15 @@ int main()
             }
         }
 
-        // Batch: only one StretchBlit per event-loop iteration
+        // Advance rotation: ~60fps pacing via select timeout
+        g_angle += 0.03f;
+        if (g_angle > 6.283185307179586f) // 2*PI
+            g_angle -= 6.283185307179586f;
+
+        // Render the rotating line into g_pixels, then blit to window
         if (g_pixels && g_win_width > 0 && g_win_height > 0)
         {
+            RenderFrame();
             StretchBlit(g_win_width, g_win_height);
         }
 
@@ -220,9 +261,6 @@ int main()
         tv.tv_sec = 0;
         tv.tv_usec = 16000;
         select(xfd + 1, &fds, nullptr, nullptr, &tv);
-
-        if (g_pixels && g_win_width > 0 && g_win_height > 0)
-            StretchBlit(g_win_width, g_win_height);
     }
 
     return 0;
