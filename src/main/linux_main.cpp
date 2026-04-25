@@ -38,30 +38,6 @@ static int handle_x_error(Display* dpy, XErrorEvent* ev)
     return 0;
 }
 
-// Nearest-neighbor scale from src PixelBuffer to dst PixelBuffer
-// Reads raw bytes from src via get_pixels(); writes to dst via set_color()
-static void scale_nn(const sopho::PixelBuffer* src, int sw, int sh, sopho::PixelBuffer* dst, int dw, int dh)
-{
-    for (int dy = 0; dy < dh; ++dy)
-    {
-        int sy = dy * sh / dh;
-        for (int dx = 0; dx < dw; ++dx)
-        {
-            int sx = dx * sw / dw;
-            // Read raw bytes from src (PixelBuffer doesn't expose get_color)
-            const uint8_t* src_data = static_cast<const uint8_t*>(src->get_pixels());
-            uint64_t src_bpp = 4;
-            const uint8_t* src_px = src_data + (static_cast<uint64_t>(sy) * sw + sx) * src_bpp;
-            uint8_t a = src_px[0];
-            uint8_t r = src_px[1];
-            uint8_t g = src_px[2];
-            uint8_t b = src_px[3];
-            // Write to dst using set_color
-            dst->set_color(static_cast<uint64_t>(dx), static_cast<uint64_t>(dy), r, g, b, a);
-        }
-    }
-}
-
 // Initialize pixel buffer with red gradient (matches win_main.cpp InitDIBData)
 void InitPixelData(int width, int height)
 {
@@ -88,7 +64,7 @@ void StretchBlit(int win_width, int win_height)
     {
         delete g_scaled;
         g_scaled = new sopho::PixelBuffer(static_cast<uint64_t>(win_width), static_cast<uint64_t>(win_height), "BGRA", 4);
-        scale_nn(g_pixels, 800, 600, g_scaled, win_width, win_height);
+        g_pixels->copy_pixel_buffer(g_scaled, sopho::PixelBuffer::Filter::Nearest);
         g_scaled_w = win_width;
         g_scaled_h = win_height;
     }
