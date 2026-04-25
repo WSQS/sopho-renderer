@@ -11,7 +11,7 @@ struct GxxContext
     static constexpr sopho::StaticString bin_prefix{" -o "};
     static constexpr sopho::StaticString build_prefix{"build/"};
     static constexpr std::array<std::string_view, 1> ldflags{"-lX11"};
-    static constexpr std::array<std::string_view, 2> cxxflags{"-g","-Isrc"};
+    static constexpr std::array<std::string_view, 2> cxxflags{"-g", "-Isrc"};
 };
 
 struct ClContext
@@ -49,6 +49,7 @@ using CxxContext = GxxContext;
 
 int main()
 {
-    sopho::CxxToolchain<CxxContext>::CxxBuilder<Main>::build();
+    auto commands = sopho::CxxToolchain<CxxContext>::CxxBuilder<Main>::build();
+    sopho::write_compile_commands_json("compile_commands.json", commands);
     return 0;
 }
