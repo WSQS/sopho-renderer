@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <chrono>
 #include <sys/select.h>
 #include <unistd.h>
 
@@ -25,6 +26,10 @@ static int g_scaled_w = 0;
 static int g_scaled_h = 0;
 static float g_angle = 0.0f; // rotation angle in radians
 static sopho::Renderer2D* g_renderer = nullptr;
+
+// FPS tracking
+static std::uint64_t g_frame_count = 0;
+static std::chrono::steady_clock::time_point g_fps_last;
 
 // PixelBuffers: source (800x600) and scaled output
 // g_pixels: format "ARGB" (A=byte0, R=byte1, G=byte2, B=byte3)
@@ -206,6 +211,9 @@ int main()
     // Graphics context for XPutImage into pixmap
     g_gc = XCreateGC(g_display, g_window, 0, nullptr);
 
+    // Initialize FPS timer
+    g_fps_last = std::chrono::steady_clock::now();
+
     // Event loop
     int xfd = ConnectionNumber(g_display);
 
@@ -251,6 +259,17 @@ int main()
         {
             RenderFrame();
             StretchBlit(g_win_width, g_win_height);
+
+            // FPS tracking
+            ++g_frame_count;
+            auto now = std::chrono::steady_clock::now();
+            double elapsed = std::chrono::duration<double>(now - g_fps_last).count();
+            if (elapsed >= 1.0)
+            {
+                printf("FPS: %.1f\n", static_cast<double>(g_frame_count) / elapsed);
+                g_frame_count = 0;
+                g_fps_last = now;
+            }
         }
 
         // Wait for X events with ~60Hz timeout (no busy sleep)
