@@ -16,3 +16,12 @@ g++ ./sob.cpp -o sob
 ./sob
 ./main
 ```
+
+### Windows
+
+```powershell
+.\scripts\Enable-VSDevShell.ps1
+cl /std:c++17 .\sob.cpp
+.\sob.exe
+.\main.exe
+```
